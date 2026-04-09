@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Auth App</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: sans-serif;
+            background: #0f1117;
+            color: #e8eaf2;
+            display: flex;
+            justify-content: center;
+            padding: 40px 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        h1 {
+            font-size: 22px;
+            margin-bottom: 24px;
+            color: #00e5a0;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 8px 18px;
+            border-radius: 6px;
+            border: 1px solid #252a38;
+            background: transparent;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .tab.active {
+            background: #00e5a0;
+            color: #0f1117;
+            border-color: #00e5a0;
+            font-weight: 600;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+            margin-top: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #181c27;
+            border: 1px solid #252a38;
+            border-radius: 8px;
+            color: #e8eaf2;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #5b8fff;
+        }
+
+        button.primary {
+            width: 100%;
+            margin-top: 18px;
+            padding: 11px;
+            background: #00e5a0;
+            border: none;
+            border-radius: 8px;
+            color: #0f1117;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button.primary:hover {
+            opacity: 0.88;
+        }
+
+        .msg {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .msg.ok {
+            background: rgba(0, 229, 160, 0.1);
+            color: #00e5a0;
+            border: 1px solid rgba(0, 229, 160, 0.3);
+        }
+
+        .msg.err {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .profile-box {
+            background: #181c27;
+            border: 1px solid #252a38;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 12px;
+            font-size: 14px;
+            line-height: 2;
+        }
+
+        .token-display {
+            background: #181c27;
+            border: 1px solid #252a38;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            font-family: monospace;
+            color: #5b8fff;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Auth App</h1>
+        <div class="tabs">
+            <button class="tab active" onclick="show('register', this)">Register</button>
+            <button class="tab" onclick="show('login', this)">Login</button>
+            <button class="tab" onclick="show('profile', this)">Profile</button>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="panel active" id="register">
+            <label>Username</label>
+            <input id="r-user" placeholder="alice_dev" />
+            <label>Email</label>
+            <input id="r-email" type="email" placeholder="alice@example.com" />
+            <label>Password</label>
+            <input id="r-pass" type="password" placeholder="min 8 characters" />
+            <button class="primary" onclick="register()">Create Account</button>
+            <div id="r-msg"></div>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="panel" id="login">
+            <label>Email</label>
+            <input id="l-email" type="email" placeholder="alice@example.com" />
+            <label>Password</label>
+            <input id="l-pass" type="password" placeholder="••••••••" />
+            <button class="primary" onclick="login()">Sign In</button>
+            <div id="l-msg"></div>
+            <div id="l-token" class="token-display" style="display:none"></div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="panel" id="profile">
+            <button class="primary" onclick="getProfile()">Fetch My Profile</button>
+            <div id="p-msg"></div>
+            <div id="p-box" class="profile-box" style="display:none"></div>
+        </div>
+    </div>
+
+    <script>
+        let accessToken = localStorage.getItem('token') || '';
+
+        function show(id, btn) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function msg(id, text, type) {
+            const el = document.getElementById(id);
+            el.className = 'msg ' + type;
+            el.textContent = text;
+        }
+
+        async function register() {
+            const body = {
+                username: document.getElementById('r-user').value,
+                email: document.getElementById('r-email').value,
+                password: document.getElementById('r-pass').value
+            };
+            const res = await fetch('/api/auth/register', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            msg('r-msg', data.message || data.error, res.ok ? 'ok' : 'err');
+        }
+
+        async function login() {
+            const body = {
+                email: document.getElementById('l-email').value,
+                password: document.getElementById('l-pass').value
+            };
+            const res = await fetch('/api/auth/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                accessToken = data.accessToken;
+                localStorage.setItem('token', accessToken);
+                msg('l-msg', `Welcome, ${data.username}! Token saved.`, 'ok');
+                const t = document.getElementById('l-token');
+                t.textContent = 'Access Token: ' + accessToken;
+                t.style.display = 'block';
+            } else {
+                msg('l-msg', data.error, 'err');
+            }
+        }
+
+        async function getProfile() {
+            if (!accessToken) return msg('p-msg', 'Please login first', 'err');
+            const res = await fetch('/api/user/profile', {
+                headers: { 'Authorization': 'Bearer ' + accessToken }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('p-box').style.display = 'block';
+                document.getElementById('p-box').innerHTML =
+                    `<b>ID:</b> ${data.id}<br><b>Username:</b> ${data.username}<br><b>Email:</b> ${data.email}`;
+                msg('p-msg', 'Profile loaded successfully', 'ok');
+            } else {
+                msg('p-msg', data.error, 'err');
+            }
+        }
+    </script>
+</body>
+
+</html>
